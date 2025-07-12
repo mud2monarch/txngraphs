@@ -1,2 +1,24 @@
-# txngraphs
-A new tool to convert an arbitrary set of blockchain transactions into a directed graph
+# Graph-based transaction tool with reth-DB
+
+| **Description.** What is it? | A tool to visualize and measure concentration of ERC-20 token transfers amongst a group of addresses |
+| --- | --- |
+| **Problem.** What problem is this solving? | Given a set of root addresses, build a visual graph of all token transfers to *n* depth and calculate cumulative transfer volumes/other metrics. |
+| **Why.** How do we know this is a real problem and worth solving? | We have a lot of tools and services to generate and measure tabular data structures, but nothing/very little that cleanly visualizes and measures token transfers in an efficient way |
+| **Success.** How do we know if we’ve solved this problem? | We can quickly produce a visualization of all of the wallets involved in the PI token honeypot (`0x20f17D48646D57764334B6606d85518680D4e276`) and identify the beginning and ending addresses to which the WETH was transferred. |
+| **Audience.** Who are we building for? | Zach Wong and any other data analyst interested in tracking fund transfers onchain |
+| **What.** What does this look like in the product? | CLI tool. Inputs:
+- Root address(es).
+- Token address(es)
+- Starting block number
+- Ending block number
+
+Outputs:
+- Visual graph
+- Some measures of no. of txns, volume, and centrality |
+
+Try to get <1s for 100k blocks? - [CGPT convo](https://chatgpt.com/share/e/6872c2bc-5358-8013-8a99-291ad6cfa795)
+
+### Docs/Reference
+- https://github.com/paradigmxyz/reth/blob/3277333df6ba9bd798f059e7a2d43d712e028d5c/crates/storage/db-api/src/lib.rs
+- https://github.com/yash-atreya/reth-walk-storage/blob/main/src/main.rs
+  - 5m slots in 0.5s
