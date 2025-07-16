@@ -4,3 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+alloy-primitives = "1.2.1"
+anyhow = "1.0.98"
+petgraph = "0.8.2"
+polars = { version = "0.49.1", features = ["polars-io"] }
