@@ -13,9 +13,9 @@
 - Some measures of no. of txns, volume, and centrality
 
 ### Notes
-- Write the depth-first search generic over a data source
+- Write the breadth-first search generic over a data source
 - Start with CSV then do RPC then do reth DB
-Try to get <1s for 100k blocks? - [CGPT convo](https://chatgpt.com/share/e/6872c2bc-5358-8013-8a99-291ad6cfa795)
+- Try to get <1s for 100k blocks? - [CGPT convo](https://chatgpt.com/share/e/6872c2bc-5358-8013-8a99-291ad6cfa795)
 
 ### Docs/Reference
 - https://github.com/paradigmxyz/reth/blob/3277333df6ba9bd798f059e7a2d43d712e028d5c/crates/storage/db-api/src/lib.rs
