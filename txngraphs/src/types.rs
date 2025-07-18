@@ -3,11 +3,15 @@ use alloy_primitives::{
     aliases::{BlockNumber, TxHash, U256},
 };
 use anyhow::{Context, Result};
-use petgraph::graphmap::DiGraphMap;
+use petgraph::{
+    graph::{Graph, NodeIndex},
+    Directed,
+};
 use polars::prelude::*;
 use std::{
     fmt::Debug,
     fmt::Display,
+    collections::VecDeque,
 };
 use std::str::FromStr;
 use tracing::info;
@@ -15,9 +19,18 @@ use tracing::info;
 ///
 /// TransferGraph
 ///
-/// The graph is a directed graph where the nodes are addresses and the edges are transfers with certain characteristics.
+/// The graph is a directed graph where the nodes are addresses, as an &str, and the edges are transfers with certain characteristics.
 /// For edges, see `TransferEdge`.
-pub type TransferGraph = DiGraphMap<String, TransferEdge>;
+pub type TransferGraph = Graph<Address, TransferEdge, Directed>;
+
+///
+/// NodeStack
+///
+/// A stack of nodes to visit.
+///
+/// The first element is the address, and the second element is the depth.
+///
+pub type NodeStack = VecDeque<(Address, usize)>;
 
 ///
 /// TransferEdge
@@ -25,7 +38,7 @@ pub type TransferGraph = DiGraphMap<String, TransferEdge>;
 /// The edge is a transfer with certain characteristics.
 ///
 pub struct TransferEdge {
-    pub amount: f64,
+    pub amount: U256,
     pub tx_hash: TxHash,
     pub block_number: BlockNumber,
     pub token: Address,
