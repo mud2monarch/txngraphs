@@ -15,6 +15,10 @@
 ### Notes
 - Write the breadth-first search generic over a data source
 - Start with CSV then do RPC then do reth DB
+
+### TODO:
+- Add support for >1 root address (maybe)
+- Need to add filtering for token. Should be easy with good types.
 - Try to get <1s for 100k blocks? - [CGPT convo](https://chatgpt.com/share/e/6872c2bc-5358-8013-8a99-291ad6cfa795)
 
 ### Docs/Reference
