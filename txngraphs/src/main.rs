@@ -17,11 +17,11 @@ use clap::Parser;
 struct Args {
     #[arg(short, long, default_value = "0xa23c6c374b372b6964ef7c1c00916e2b4f5a3629")]
     root_address: String,
-    #[arg(short, long, default_value = "10")]
+    #[arg(short = 'd', long, default_value = "10")]
     max_depth: usize,
-    #[arg(short, long, default_value = "8610738")]
+    #[arg(short = 's', long, default_value = "8610738")]
     block_start: u64,
-    #[arg(short, long, default_value = "8625670")]
+    #[arg(short = 'e', long, default_value = "8625670")]
     block_end: u64,
 }
 
@@ -74,7 +74,7 @@ fn main() -> Result<()> {
     visited.insert(root_address.clone());
 
     while let Some((curr_addr, depth)) = stack.pop_front() {
-        if depth >= max_depth {
+        if depth > max_depth {
             continue;
         }
 
@@ -82,9 +82,35 @@ fn main() -> Result<()> {
             let from = transfer.from_address.clone();
             let to = transfer.to_address.clone();
 
-            
+            // Check our addr_idx_map to see if we've already seen this address
+            // If we have seen this address (i.e., .entry() returns an Entry::Occupied), `.entry().or_insert_with()` will return the existing node index
+            // If we haven't seen this address (i.e., .entry() returns an Entry::Vacant), `.or_insert_with()` will
+            // (1) add the address as a node in the graph (which returns a NodeIndex),
+            // (2) add the NodeIndex to add_idx_map,
+            // (3) return a mutable reference to a NodeIndex
+            // (4) dereference the mutable reference to get the NodeIndex (required, at least, to avoid maintaining a mutable reference to the NodeIndex in addr_idx_map)
+            let from_idx = *addr_idx_map.entry(from.clone()).or_insert_with(|| graph.add_node(from.clone()));
+            let to_idx = *addr_idx_map.entry(to.clone()).or_insert_with(|| graph.add_node(to.clone()));
+
+            graph.add_edge(
+                from_idx,
+                to_idx,
+                TransferEdge {
+                    amount: transfer.amount,
+                    tx_hash: transfer.tx_hash,
+                    block_number: transfer.block_number,
+                    token: transfer.token,
+                },
+            );
+
+            // If we haven't visited this address, add it to the stack with depth + 1
+            if !visited.contains(&from) {
+                stack.push_back((from, depth+1))
+            }
         }
     }
+
+    println!("graph: {:?}", graph);
     
     Ok(())
-}
+}   

@@ -4,16 +4,12 @@ use alloy_primitives::{
 };
 use anyhow::{Context, Result};
 use petgraph::{
-    graph::{Graph, NodeIndex},
     Directed,
+    graph::{Graph, NodeIndex},
 };
 use polars::prelude::*;
-use std::{
-    fmt::Debug,
-    fmt::Display,
-    collections::VecDeque,
-};
 use std::str::FromStr;
+use std::{collections::VecDeque, fmt::Debug, fmt::Display};
 use tracing::info;
 
 ///
@@ -42,6 +38,12 @@ pub struct TransferEdge {
     pub tx_hash: TxHash,
     pub block_number: BlockNumber,
     pub token: Address,
+}
+
+impl Debug for TransferEdge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TransferEdge {{ amount: {}, tx_hash: {}, block_number: {}, token: {} }}", self.amount, self.tx_hash, self.block_number, self.token)
+    }
 }
 
 ///
@@ -80,13 +82,31 @@ impl Transfer {
 
 impl Debug for Transfer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Transfer {{ tx_hash: {}, block_number: {}, from_address: {}, to_address: {}, token: {}, amount: {} }}", self.tx_hash, self.block_number, self.from_address, self.to_address, self.token, self.amount)
+        write!(
+            f,
+            "Transfer {{ tx_hash: {}, block_number: {}, from_address: {}, to_address: {}, token: {}, amount: {} }}",
+            self.tx_hash,
+            self.block_number,
+            self.from_address,
+            self.to_address,
+            self.token,
+            self.amount
+        )
     }
 }
 
 impl Display for Transfer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Transfer {{ tx_hash: {}, block_number: {}, from_address: {}, to_address: {}, token: {}, amount: {} }}", self.tx_hash, self.block_number, self.from_address, self.to_address, self.token, self.amount)
+        write!(
+            f,
+            "Transfer {{ tx_hash: {}, block_number: {}, from_address: {}, to_address: {}, token: {}, amount: {} }}",
+            self.tx_hash,
+            self.block_number,
+            self.from_address,
+            self.to_address,
+            self.token,
+            self.amount
+        )
     }
 }
 
