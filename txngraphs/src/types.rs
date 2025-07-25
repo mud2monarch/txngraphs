@@ -42,7 +42,11 @@ pub struct TransferEdge {
 
 impl Debug for TransferEdge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "TransferEdge {{ amount: {}, tx_hash: {}, block_number: {}, token: {} }}", self.amount, self.tx_hash, self.block_number, self.token)
+        write!(
+            f,
+            "TransferEdge {{ amount: {}, tx_hash: {}, block_number: {}, token: {} }}",
+            self.amount, self.tx_hash, self.block_number, self.token
+        )
     }
 }
 

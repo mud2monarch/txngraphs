@@ -1,21 +1,25 @@
 mod types;
+use alloy_primitives::Address;
 use anyhow::Result;
+use clap::Parser;
+use petgraph::graph::NodeIndex;
 use polars::prelude::*;
 use std::{
-    sync::Arc,
     collections::{HashMap, HashSet},
     str::FromStr,
+    sync::Arc,
 };
-use types::*;
-use alloy_primitives::Address;
-use tracing_subscriber;
 use tracing::info;
-use petgraph::graph::NodeIndex;
-use clap::Parser;
+use tracing_subscriber;
+use types::*;
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(short, long, default_value = "0xa23c6c374b372b6964ef7c1c00916e2b4f5a3629")]
+    #[arg(
+        short,
+        long,
+        default_value = "0xa23c6c374b372b6964ef7c1c00916e2b4f5a3629"
+    )]
     root_address: String,
     #[arg(short = 'd', long, default_value = "10")]
     max_depth: usize,
@@ -53,14 +57,14 @@ fn main() -> Result<()> {
     let transfers = data_source.get_transfers(
         &Address::from_str("0xa23c6c374b372b6964ef7c1c00916e2b4f5a3629")?,
         8610738,
-        8625670
+        8625670,
     )?;
 
     info!("transfers.length: {}", transfers.len());
 
     // start the search
 
-    let mut graph = TransferGraph::new(); 
+    let mut graph = TransferGraph::new();
     // stack keeps track of addresses + depth of my BFS
     let mut stack = NodeStack::new();
     // addr_idx_map maps addresses to their node index in the graph so that I can insert edges
@@ -89,8 +93,12 @@ fn main() -> Result<()> {
             // (2) add the NodeIndex to add_idx_map,
             // (3) return a mutable reference to a NodeIndex
             // (4) dereference the mutable reference to get the NodeIndex (required, at least, to avoid maintaining a mutable reference to the NodeIndex in addr_idx_map)
-            let from_idx = *addr_idx_map.entry(from.clone()).or_insert_with(|| graph.add_node(from.clone()));
-            let to_idx = *addr_idx_map.entry(to.clone()).or_insert_with(|| graph.add_node(to.clone()));
+            let from_idx = *addr_idx_map
+                .entry(from.clone())
+                .or_insert_with(|| graph.add_node(from.clone()));
+            let to_idx = *addr_idx_map
+                .entry(to.clone())
+                .or_insert_with(|| graph.add_node(to.clone()));
 
             graph.add_edge(
                 from_idx,
@@ -105,12 +113,12 @@ fn main() -> Result<()> {
 
             // If we haven't visited this address, add it to the stack with depth + 1
             if !visited.contains(&from) {
-                stack.push_back((from, depth+1))
+                stack.push_back((from, depth + 1))
             }
         }
     }
 
     println!("graph: {:?}", graph);
-    
+
     Ok(())
-}   
+}
