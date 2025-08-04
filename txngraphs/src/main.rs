@@ -41,22 +41,25 @@ fn main() -> Result<()> {
     let block_end: u64 = args.block_end;
     // Define schema overrides; can't use default i64 for token amounts
     let schema_changes = Schema::from_iter(vec![
-        Field::new("token_sold_amount_raw".into(), DataType::String),
-        Field::new("token_bought_amount_raw".into(), DataType::String),
+        Field::new("tx_from".into(), DataType::String),
+        Field::new("tx_to".into(), DataType::String),
+        Field::new("tx_hash".into(), DataType::String),
         Field::new("block_number".into(), DataType::UInt64),
+        Field::new("token_sold_address".into(), DataType::String),
+        Field::new("token_sold_amount_raw".into(), DataType::String),
+        Field::new("token_bought_address".into(), DataType::String),
+        Field::new("token_bought_amount_raw".into(), DataType::String),
+        Field::new("amount_usd".into(), DataType::Float64),
     ]);
 
     // Load data from CSV
-    let trades = CsvReadOptions::default()
-        .with_has_header(true)
-        .with_schema_overwrite(Some(Arc::new(schema_changes)))
-        .try_into_reader_with_file_path(Some("data/pi_token_trades_dune.csv".into()))?
+    let trades = CsvReader::from_path("data/pi_token_trades_dune.csv")?
+        .has_header(true)
+        .with_schema(Some(Arc::new(schema_changes)))
         .finish()?;
 
     // Create a new DuneDexTradesDataSource from the loaded data
     let data_source = DuneDexTradesDataSource::new(trades);
-
-    let transfers = data_source.get_transfers(&root_address, &block_start, &block_end)?;
 
     let graph = build_transfer_graph(
         &data_source,
