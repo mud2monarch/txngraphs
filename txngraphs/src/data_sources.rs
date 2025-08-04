@@ -4,14 +4,22 @@ use alloy_primitives::{
     aliases::{BlockNumber, TxHash, U256},
 };
 use anyhow::{Context, Result};
+use cryo_freeze::*;
 use petgraph::{
     Directed,
     graph::{Graph, NodeIndex},
 };
 use polars::prelude::*;
 use std::str::FromStr;
-use std::{collections::VecDeque, fmt::Debug, fmt::Display};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt::{Debug, Display},
+    hash::Hash,
+    sync::Arc,
+};
+use tokio::runtime::Runtime;
 use tracing::info;
+use zerocopy::IntoBytes;
 
 /// TransferDataSource
 ///
@@ -119,6 +127,86 @@ impl TransferDataSource for DuneDexTradesDataSource {
             transfers.push(trade);
         }
 
+        Ok(transfers)
+    }
+}
+
+/// CryoTransfersDataSource is a data source that fetches ERC20 transfers via RPC calls
+///
+/// We're using the Cryo crate, an efficient blockchain data extraction library.
+///
+/// A chain_config is a tuple of chain_id and the RPC URL you want to use,
+/// e.g. "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY".to_string()" or "http://localhost:8545".
+#[derive(Debug)]
+pub struct CryoTransferDataSource {
+    runtime: Runtime,
+    source: Arc<Source>,
+    chain_config: (u64, String),
+}
+
+impl Display for CryoTransferDataSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CryoTransferDataSource({})", self.chain_config.0)
+    }
+}
+
+impl CryoTransferDataSource {
+    pub fn new(chain_id: u64, rpc_url: String) -> anyhow::Result<Self> {
+        let runtime = Runtime::new()?;
+
+        // Create source once during initialization
+        let source = runtime.block_on(Source::init(Some(rpc_url.clone())))?;
+
+        Ok(Self {
+            runtime,
+            source: Arc::new(source),
+            chain_config: (chain_id, rpc_url),
+        })
+    }
+
+    // TODO: implement this
+    fn convert_df_to_transfers(df: polars::prelude::DataFrame) -> Result<Vec<Transfer>> {
+        Ok(vec![])
+    }
+}
+
+impl TransferDataSource for CryoTransferDataSource {
+    fn get_transfers(
+        &self,
+        address: &Address,
+        block_start: &BlockNumber,
+        block_end: &BlockNumber,
+    ) -> anyhow::Result<Vec<Transfer>> {
+
+        let df = self.runtime.block_on(async {
+            let query = Query {
+                datatypes: vec![MetaDatatype::Scalar(Datatype::Erc20Transfers)],
+                partitions: vec![Partition {
+                    block_numbers: Some(vec![BlockChunk::Range(
+                        *block_start as u64,
+                        *block_end as u64,
+                    )]),
+                    from_addresses: Some(vec![AddressChunk::Values(vec![
+                        address.as_bytes().to_vec(),
+                    ])]),
+                    ..Default::default()
+                }],
+                schemas: HashMap::new(), // Auto-populated
+                time_dimension: TimeDimension::Blocks,
+                partitioned_by: vec![],
+                exclude_failed: false,
+                js_tracer: None,
+                labels: QueryLabels {
+                    align: false,
+                    reorg_buffer: 0,
+                },
+            };
+
+            collect(Arc::new(query), self.source.clone()).await
+        })?;
+
+        // Once we have our Polars DataFrame then we convert it to a Vec<Transfer>
+        let transfers = CryoTransferDataSource::convert_df_to_transfers(df)?;
         Ok(transfers)
     }
 }
