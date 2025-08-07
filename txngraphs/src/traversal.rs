@@ -11,9 +11,10 @@ pub fn build_transfer_graph<D: TransferDataSource>(
     root_address: Address,
     block_start: BlockNumber,
     block_end: BlockNumber,
+    token_address: &Address,
     max_depth: usize,
 ) -> Result<TransferGraph> {
-    let transfers = data_source.get_transfers(&root_address, &block_start, &block_end)?;
+    let transfers = data_source.get_transfers(&root_address, token_address, &block_start, &block_end)?;
 
     // start the search
 
@@ -35,7 +36,7 @@ pub fn build_transfer_graph<D: TransferDataSource>(
             continue;
         }
 
-        for transfer in data_source.get_transfers(&curr_addr, &block_start, &block_end)? {
+        for transfer in data_source.get_transfers(&curr_addr, token_address, &block_start, &block_end)? {
             let from = transfer.from_address.clone();
             let to = transfer.to_address.clone();
 

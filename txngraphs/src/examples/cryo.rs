@@ -1,3 +1,5 @@
+// TODO: Cryo portion is not working; too much filtering maybe? Getting no results.
+
 mod data_sources;
 mod traversal;
 mod types;
@@ -45,7 +47,23 @@ fn main() -> Result<()> {
     let token_address: Address = Address::from_str(&args.token_address)?;
 
     // Get RPC URL from environment
+    let unichain_rpc_url = std::env::var("UNICHAIN_RPC_URL")
+        .expect("UNICHAIN_RPC_URL environment variable not found. Please set it in your .env file");
     
+    info!("Testing Cryo connector with:");
+    info!("  Root address: {}", root_address);
+    info!("  Block range: {} to {}", block_start, block_end);
+    info!("  Chain: Unichain (1301)");
+
+    // Use Unichain chain ID (1301)
+    let cryo_source = CryoTransferDataSource::new(1301, unichain_rpc_url)?;
+    
+    let transfers = cryo_source.get_transfers(&root_address, &token_address, &8624945, &8624974)?;
+    
+    info!("Retrieved {} transfers", transfers.len());
+    for (i, transfer) in transfers.iter().take(5).enumerate() {
+        info!("Transfer {}: {:?}", i, transfer);
+    }
 
     Ok(())
 }

@@ -7,10 +7,22 @@ edition = "2024"
 alloy-primitives = "1.2.1"
 anyhow = "1.0.98"
 clap = {version = "4.5.41", features = ["derive"]}
+copypasta = "0.10.1"
+dotenv = "0.15.0"
 cryo_freeze = "0.3.2"
-petgraph = "0.8.2"
+petgraph = { version = "0.8.2", features = ["graphmap"] }
 polars = { version = "0.36.2", features = ["polars-io", "lazy"] }
 tokio = { version = "1.47.1", features = ["macros", "rt"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 zerocopy = "0.8.26"
+
+# Local Reth dependencies
+reth-db = { path = "../../temp_repos/reth/crates/storage/db" }
+reth-db-api = { path = "../../temp_repos/reth/crates/storage/db-api" }
+reth-ethereum-primitives = { path = "../../temp_repos/reth/crates/ethereum/primitives" }
+reth-storage-errors = { path = "../../temp_repos/reth/crates/storage/errors" }
+
+[[example]]
+name = "dune_dex"
+path = "src/examples/dune_dex.rs"

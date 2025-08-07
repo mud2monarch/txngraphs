@@ -29,6 +29,7 @@ pub trait TransferDataSource {
     fn get_transfers(
         &self,
         address: &Address,
+        token_address: &Address,
         block_start: &BlockNumber,
         block_end: &BlockNumber,
     ) -> anyhow::Result<Vec<Transfer>>;
@@ -68,10 +69,12 @@ impl TransferDataSource for DuneDexTradesDataSource {
     fn get_transfers(
         &self,
         address: &Address,
+        token_address: &Address,
         block_start: &BlockNumber,
         block_end: &BlockNumber,
     ) -> anyhow::Result<Vec<Transfer>> {
         let addr_hex = format!("{address:#x}");
+        let token_hex = format!("{token_address:#x}");
 
         let filtered_trades = self
             .dex_trades
@@ -80,6 +83,10 @@ impl TransferDataSource for DuneDexTradesDataSource {
             .filter(
                 col("tx_from")
                     .eq(lit(addr_hex))
+                    .and(
+                        col("token_sold_address").eq(lit(token_hex.clone()))
+                        .or(col("token_bought_address").eq(lit(token_hex)))
+                    )
                     .and(col("block_number").gt_eq(lit(*block_start)))
                     .and(col("block_number").lt_eq(lit(*block_end))),
             )
@@ -164,9 +171,57 @@ impl CryoTransferDataSource {
         })
     }
 
-    // TODO: implement this
-    fn convert_df_to_transfers(df: polars::prelude::DataFrame) -> Result<Vec<Transfer>> {
-        Ok(vec![])
+    fn convert_df_to_transfers(df: polars::prelude::DataFrame, target_address: &Address) -> Result<Vec<Transfer>> {
+        let mut transfers = Vec::with_capacity(df.height());
+        
+        // Extract columns from the DataFrame - using Cryo's actual schema
+        let col_tx_hash = df.column("transaction_hash")?.binary()?;
+        let col_block_number = df.column("block_number")?.u32()?;
+        let col_from_address = df.column("from_address")?.binary()?;
+        let col_to_address = df.column("to_address")?.binary()?;
+        let col_erc20 = df.column("erc20")?.binary()?;
+        let col_value = df.column("value_string")?.str()?; // Use string version for easier parsing
+
+        for row in 0..df.height() {
+            let tx_hash_bytes = col_tx_hash
+                .get(row)
+                .with_context(|| format!("Failed to get transaction_hash for row {}", row))?;
+            let from_bytes = col_from_address
+                .get(row)
+                .with_context(|| format!("Failed to get from_address for row {}", row))?;
+            let to_bytes = col_to_address
+                .get(row)
+                .with_context(|| format!("Failed to get to_address for row {}", row))?;
+            let erc20_bytes = col_erc20
+                .get(row)
+                .with_context(|| format!("Failed to get erc20 for row {}", row))?;
+
+            let from_address = Address::from_slice(from_bytes);
+            let to_address = Address::from_slice(to_bytes);
+            
+            // Only include transfers where target_address is either sender or receiver
+            if from_address != *target_address && to_address != *target_address {
+                continue;
+            }
+
+            let transfer = Transfer::new(
+                B256::from_slice(tx_hash_bytes),
+                col_block_number
+                    .get(row)
+                    .with_context(|| format!("Failed to get block_number for row {}", row))? as u64,
+                from_address,
+                to_address,
+                Address::from_slice(erc20_bytes),
+                U256::from_str(
+                    col_value
+                        .get(row)
+                        .with_context(|| format!("Failed to get value for row {}", row))?,
+                )?,
+            );
+            transfers.push(transfer);
+        }
+
+        Ok(transfers)
     }
 }
 
@@ -174,6 +229,7 @@ impl TransferDataSource for CryoTransferDataSource {
     fn get_transfers(
         &self,
         address: &Address,
+        token_address: &Address,
         block_start: &BlockNumber,
         block_end: &BlockNumber,
     ) -> anyhow::Result<Vec<Transfer>> {
@@ -186,12 +242,26 @@ impl TransferDataSource for CryoTransferDataSource {
                         *block_start as u64,
                         *block_end as u64,
                     )]),
-                    from_addresses: Some(vec![AddressChunk::Values(vec![
-                        address.as_bytes().to_vec(),
+                    contracts: Some(vec![AddressChunk::Values(vec![
+                        token_address.as_bytes().to_vec(),
                     ])]),
                     ..Default::default()
                 }],
-                schemas: HashMap::new(), // Auto-populated
+                schemas: {
+                    let mut schemas = HashMap::new();
+                    let erc20_schema = Datatype::Erc20Transfers.table_schema(
+                        &vec![U256Type::String],
+                        &ColumnEncoding::Binary,
+                        &None,
+                        &None,
+                        &None,
+                        None,
+                        None,
+                    // TODO: Bad expect here.
+                    ).expect("Failed to create schema");
+                    schemas.insert(Datatype::Erc20Transfers, erc20_schema);
+                    schemas
+                },
                 time_dimension: TimeDimension::Blocks,
                 partitioned_by: vec![],
                 exclude_failed: false,
@@ -204,9 +274,9 @@ impl TransferDataSource for CryoTransferDataSource {
 
             collect(Arc::new(query), self.source.clone()).await
         })?;
-
+        info!("df.height(): {}", df.height());
         // Once we have our Polars DataFrame then we convert it to a Vec<Transfer>
-        let transfers = CryoTransferDataSource::convert_df_to_transfers(df)?;
+        let transfers = CryoTransferDataSource::convert_df_to_transfers(df, address)?;
         Ok(transfers)
     }
 }

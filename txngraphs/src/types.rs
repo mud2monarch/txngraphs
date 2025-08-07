@@ -9,6 +9,8 @@ use petgraph::{
 };
 use std::{collections::VecDeque, fmt::Debug, fmt::Display};
 use tracing::info;
+use std::fmt::Write;
+use copypasta::{ClipboardProvider, ClipboardContext};
 
 ///
 /// TransferGraph
@@ -120,4 +122,53 @@ impl Display for Transfer {
             self.amount
         )
     }
+}
+
+/// Export TransferGraph to DOT format for visualization
+pub fn export_graph_to_dot(graph: &TransferGraph) -> String {
+    let mut dot = String::new();
+    writeln!(dot, "digraph TransferGraph {{").unwrap();
+    writeln!(dot, "  node [shape=ellipse];").unwrap();
+    writeln!(dot, "  edge [dir=forward];").unwrap();
+    writeln!(dot).unwrap();
+    
+    // Add nodes (addresses)
+    for node_idx in graph.node_indices() {
+        let address = graph[node_idx];
+        writeln!(dot, "  \"{}\" [label=\"{:.10}...\"];", address, address).unwrap();
+    }
+    
+    writeln!(dot).unwrap();
+    
+    // Add edges (transfers)
+    for edge_idx in graph.edge_indices() {
+        let (from_idx, to_idx) = graph.edge_endpoints(edge_idx).unwrap();
+        let from_addr = graph[from_idx];
+        let to_addr = graph[to_idx];
+        let transfer = &graph[edge_idx];
+        
+        let amount_str = transfer.amount.to_string();
+        
+        writeln!(
+            dot, 
+            "  \"{}\" -> \"{}\" [label=\"{}\\nBlock: {}\" tooltip=\"Tx: {}\"];",
+            from_addr, to_addr, amount_str, transfer.block_number, transfer.tx_hash
+        ).unwrap();
+    }
+    
+    writeln!(dot, "}}").unwrap();
+    dot
+}
+
+/// Export TransferGraph to DOT format and copy to clipboard
+pub fn export_graph_to_clipboard(graph: &TransferGraph) -> Result<()> {
+    let dot_string = export_graph_to_dot(graph);
+    let mut ctx = ClipboardContext::new()
+        .map_err(|e| anyhow::anyhow!(e))
+        .context("Failed to initialize clipboard context")?;
+    ctx.set_contents(dot_string)
+        .map_err(|e| anyhow::anyhow!(e))
+        .context("Failed to copy DOT string to clipboard")?;
+    info!("Graph exported to clipboard in DOT format");
+    Ok(())
 }
