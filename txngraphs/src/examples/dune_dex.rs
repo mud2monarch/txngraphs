@@ -67,7 +67,7 @@ fn main() -> Result<()> {
         root_address,
         block_start,
         block_end,
-        &token_address,
+        &[token_address],
         max_depth,
     )?;
 
