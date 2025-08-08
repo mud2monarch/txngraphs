@@ -37,6 +37,8 @@ struct Args {
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
+
+    info!("Starting txngraphs");
     let args = Args::parse();
     let root_address: Address = Address::from_str(&args.root_address)?;
     let max_depth: usize = args.max_depth;
@@ -44,9 +46,11 @@ fn main() -> Result<()> {
     let block_end: u64 = args.block_end;
     let token_address: Address = Address::from_str(&args.token_address)?;
 
-    let db_path = PathBuf::from("/Users/zach.wong/Documents/unichain/unichain/db");
+    let db_path = String::from("/Users/zach.wong/Documents/unichain/unichain");
+
+    info!("Initializing RethTransferDataSource");
     let reth_source = RethTransferDataSource::new(db_path);
-    
+    info!("Building transfer graph");
     let graph = build_transfer_graph(&reth_source, root_address, block_start, block_end, &token_address, max_depth)?;
 
     info!("Graph built successfully");

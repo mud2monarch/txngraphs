@@ -1,39 +1,44 @@
-use tracing::info;
+use tracing::{info, debug};
 use alloy_primitives::{
     b256,
-    Address, B256,
-    aliases::{BlockNumber, TxHash, U256},
+    Address, B256, U256,
+    aliases::BlockNumber,
     Log,
 };
-use tracing::{debug};
 use anyhow::{Context, Result};
-use std::{path::PathBuf, sync::Arc};
-use reth_db_api::{
-    cursor::DbCursorRO,
-    database::Database,
-    tables,
-    transaction::DbTx,
-};
-use reth_ethereum_primitives::Receipt;
-use reth_storage_errors::db::DatabaseError;
-use reth_db::{
-    open_db_read_only,
-    mdbx::DatabaseArguments,
-    DatabaseEnv
-};
+use std::{path::Path, sync::Arc};
+// Database components
+use reth_db::{open_db_read_only, mdbx::DatabaseArguments, DatabaseEnv};
+// Provider components
+use reth_provider::{ProviderFactory, BlockBodyIndicesProvider, ReceiptProvider, TransactionsProvider};
+use reth_provider::providers::StaticFileProvider;
+// Chain specification
+use reth_chainspec::ChainSpecBuilder;
+
+// Node types
+use reth_node_types::NodeTypesWithDBAdapter;
+use reth_node_ethereum::EthereumNode;
 use crate::{data_sources::TransferDataSource, types::Transfer};
 
 const ERC20_TRANSFER_EVENT_SIGNATURE: B256 = b256!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef");
 
 pub struct RethTransferDataSource {
-    pub db: reth_db::DatabaseEnv,
+    pub factory: ProviderFactory<NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>>
 }
 
 impl RethTransferDataSource {
-    pub fn new(db_path: PathBuf) -> Self {
-        let db = reth_db::open_db_read_only(db_path, DatabaseArguments::default())
-            .expect("Failed to initialize a read connection to reth DB");
-        Self { db }
+    pub fn new(db_path: String) -> Self {
+        let db_path = Path::new(&db_path);
+        let db_env = open_db_read_only(db_path.join("db"), DatabaseArguments::default()).unwrap();
+        let spec = ChainSpecBuilder::mainnet().build();
+
+        let factory = ProviderFactory::<NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>>::new(
+            Arc::new(db_env),
+            spec.clone().into(),
+            StaticFileProvider::read_only(db_path.join("static_files"), true).unwrap(),
+        );
+
+        Self { factory }
     }
 }
 
@@ -50,20 +55,22 @@ impl TransferDataSource for RethTransferDataSource {
         // this intermediate vector
         let mut txns_no_hash = Vec::new();
         
-        let db_tx = self.db.tx()?;
+        let provider = self.factory.provider()?;
+        
         for bn in *block_start..=*block_end {
-            let txns_in_block = db_tx.get::<tables::BlockBodyIndices>(bn)
+            let txns_in_block = provider.block_body_indices(bn)
                 .context("failed to get block body indices")?
-                .context("No block body indices found")?;
+                .context(format!("No block body indices found for block {}", bn))?;
             
             info!("Block {} has {} txns", bn, txns_in_block.tx_num_range().count());
+
             for tx_num in txns_in_block.tx_num_range() {
-                let tx_receipt = db_tx.get::<tables::Receipts>(tx_num)
+                let tx_receipt = provider.receipt(tx_num)
                     .context("failed to get tx receipt")?
                     .context(format!("No tx receipt found for tx_num {:?}", tx_num))?;
                 
                 // check if tx is relevant
-                for log in tx_receipt.logs {
+                for log in &tx_receipt.logs {
 
                     // check if the log is from the ERC20 token I'm interested in
                     if log.address != *token_address {
@@ -88,15 +95,14 @@ impl TransferDataSource for RethTransferDataSource {
             }
         }
 
-        // for matched txns, get the tx hash from tables::Transactions
+        // for matched txns, get the tx hash
         for txn in txns_no_hash {
-            let tx_data = db_tx.get::<tables::Transactions>(txn.0)
-                .context("failed to get tx hash")?
-                .context(format!("No tx hash found for tx_num {:?}", txn.0))?;
-            let tx_hash = tx_data.hash();
+            let tx_data = provider.transaction_by_id(txn.0)
+                .context("failed to get transaction")?
+                .context(format!("No transaction found for tx_num {:?}", txn.0))?;
             
             transfers.push(Transfer {
-                tx_hash: *tx_hash,
+                tx_hash: *tx_data.hash(),
                 block_number: txn.1,
                 from_address: txn.2,
                 to_address: txn.3,
@@ -104,8 +110,6 @@ impl TransferDataSource for RethTransferDataSource {
                 amount: txn.4,
             })
         }
-
-        db_tx.commit()?;
         Ok(transfers)
     }
 }

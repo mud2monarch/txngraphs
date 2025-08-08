@@ -17,11 +17,12 @@ tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 zerocopy = "0.8.26"
 
-# Local Reth dependencies
+# Local Reth dependencies - only what we actually use
 reth-db = { path = "../../temp_repos/reth/crates/storage/db" }
-reth-db-api = { path = "../../temp_repos/reth/crates/storage/db-api" }
-reth-ethereum-primitives = { path = "../../temp_repos/reth/crates/ethereum/primitives" }
-reth-storage-errors = { path = "../../temp_repos/reth/crates/storage/errors" }
+reth-provider = { path = "../../temp_repos/reth/crates/storage/provider" }
+reth-chainspec = { path = "../../temp_repos/reth/crates/chainspec" }
+reth-node-types = { path = "../../temp_repos/reth/crates/node/types" }
+reth-node-ethereum = { path = "../../temp_repos/reth/crates/ethereum/node" }
 
 [[example]]
 name = "dune_dex"
