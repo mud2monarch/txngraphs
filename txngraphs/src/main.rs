@@ -27,7 +27,7 @@ struct Args {
     root_address: String,
     #[arg(
         long,
-        default_value = "0x622b6330f226bf08427dcad49c9ea9694604bf2d,0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        default_value = "0x622b6330f226bf08427dcad49c9ea9694604bf2d",
         value_delimiter = ','
     )]
     token_address: Vec<String>,
@@ -35,7 +35,7 @@ struct Args {
     max_depth: usize,
     #[arg(short = 's', long, default_value = "20521409")]
     block_start: u64,
-    #[arg(short = 'e', long, default_value = "20521410")]
+    #[arg(short = 'e', long, default_value = "20529409")]
     block_end: u64,
 }
 

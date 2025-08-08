@@ -12,11 +12,6 @@ pub fn build_transfer_graph<D: TransferDataSource>(
     token_addresses: &[Address],
     max_depth: usize,
 ) -> Result<TransferGraph> {
-    let transfers =
-        data_source.get_transfers(&root_address, token_addresses, &block_start, &block_end)?;
-
-    // start the search
-
     let mut graph = TransferGraph::new();
     // stack keeps track of addresses + depth of my BFS
     let mut stack = NodeStack::new();
@@ -66,9 +61,8 @@ pub fn build_transfer_graph<D: TransferDataSource>(
                 },
             );
 
-            // If we haven't visited this address, add it to the stack with depth + 1
-            if !visited.contains(&from) {
-                stack.push_back((from, depth + 1))
+            if depth < max_depth && visited.insert(to.clone()) {
+                stack.push_back((to, depth + 1));
             }
         }
     }
