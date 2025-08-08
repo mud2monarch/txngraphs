@@ -1,3 +1,5 @@
 .DS_Store
 txngraphs/target/
 ref.rs
+.env
+claude.md
