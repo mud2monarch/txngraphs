@@ -1,5 +1,7 @@
 # Graph-based transaction tool with reth-DB
 
+[Link to slides -- explanation of problem, screenshot demo](https://docs.google.com/presentation/d/1j2BoZv-iszDs88wIsYS2kxomsdlOZNqOSjNmQhSGiKk/edit?usp=sharing)
+
 | **Description.** What is it? | A tool to visualize and measure concentration of ERC-20 token transfers amongst a group of addresses |
 | --- | --- |
 | **Problem.** What problem is this solving? | Given a set of root addresses, build a visual graph of all token transfers to *n* depth and calculate cumulative transfer volumes/other metrics. |
