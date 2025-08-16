@@ -4,38 +4,30 @@ mod types;
 use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
-use dotenv::dotenv;
-use petgraph::graph::NodeIndex;
-use polars::prelude::*;
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-    str::FromStr,
-    sync::Arc,
-};
-use tracing::info;
+use std::str::FromStr;
+use tracing::{info, warn};
 use tracing_subscriber;
-use txngraphs::{data_sources::*, reth_source::*, traversal::*, types::*};
+use txngraphs::{data_sources::*, graph_utils::*, reth_source::*, traversal::*, types::*};
 
 #[derive(Parser, Debug)]
 struct Args {
     #[arg(
         short,
         long,
-        default_value = "0x3bc1588f8D987C9ED07B3796AA50ccBF10514326"
+        default_value = "0x284F11109359a7e1306C3e447ef14D38400063FF"
     )]
     root_address: String,
     #[arg(
         long,
-        default_value = "0x622b6330f226bf08427dcad49c9ea9694604bf2d",
+        default_value = "0x4200000000000000000000000000000000000006",
         value_delimiter = ','
     )]
     token_address: Vec<String>,
-    #[arg(short = 'd', long, default_value = "10")]
+    #[arg(short = 'd', long, default_value = "1")]
     max_depth: usize,
-    #[arg(short = 's', long, default_value = "20521409")]
+    #[arg(short = 's', long, default_value = "8610738")]
     block_start: u64,
-    #[arg(short = 'e', long, default_value = "20529409")]
+    #[arg(short = 'e', long, default_value = "8630738")]
     block_end: u64,
 }
 
@@ -49,14 +41,18 @@ fn main() -> Result<()> {
     let max_depth: usize = args.max_depth;
     let block_start: u64 = args.block_start;
     let block_end: u64 = args.block_end;
+    if block_end < block_start {
+        warn!("Block end is less than block start. Please check your input.")
+    }
     let token_addresses: Vec<Address> = args
         .token_address
         .iter()
         .map(|addr| Address::from_str(addr))
         .collect::<Result<Vec<Address>, _>>()?;
     info!("Token addresses: {:?}", token_addresses);
+    info!("Have {} blocks to process.", block_end - block_start);
 
-    let db_path = String::from("/home/gyges/.local/share/reth");
+    let db_path = String::from("/Users/zach.wong/Documents/unichain/unichain");
 
     info!("Initializing RethTransferDataSource");
     let reth_source = RethTransferDataSource::new(db_path);
@@ -77,8 +73,22 @@ fn main() -> Result<()> {
         graph.edge_count()
     );
 
-    let output = export_graph_to_dot(&graph);
-    info!("Graph exported to dot file: {}", output);
+    // let output = save_graph_as_svg(&graph, "result.svg").expect("Failed to write graph to svg.");
+    // info!("Graph exported to svg file: {}", &output);
+
+    let summary =
+        TransferGraphSummary::aggregate_transfers(&graph).sort_by_addr_then_transfer_count(true);
+    let filtered_summary = summary
+        .aggregated_transfers
+        .into_iter()
+        .filter(|row| row.no_transfers > 1)
+        .collect::<Vec<_>>();
+    print!(
+        "{}",
+        TransferGraphSummary {
+            aggregated_transfers: filtered_summary
+        }
+    );
 
     Ok(())
 }

@@ -7,10 +7,6 @@ use alloy_primitives::{
 };
 use anyhow::{Context, Result};
 use cryo_freeze::*;
-use petgraph::{
-    Directed,
-    graph::{Graph, NodeIndex},
-};
 use polars::prelude::*;
 use std::str::FromStr;
 use std::{
@@ -249,7 +245,10 @@ impl TransferDataSource for CryoTransferDataSource {
                         *block_end as u64,
                     )]),
                     contracts: Some(vec![AddressChunk::Values(vec![
-                        token_addresses.iter().flat_map(|address| address.as_bytes().to_vec()).collect(),
+                        token_addresses
+                            .iter()
+                            .flat_map(|address| address.as_bytes().to_vec())
+                            .collect(),
                     ])]),
                     ..Default::default()
                 }],

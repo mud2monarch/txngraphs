@@ -5,11 +5,13 @@ edition = "2024"
 
 [dependencies]
 alloy-primitives = "1.3.0"
+alloy-consensus = "1.0.24"
 anyhow = "1.0.98"
-clap = {version = "4.5.41", features = ["derive"]}
+clap = { version = "4.5.41", features = ["derive"] }
 copypasta = "0.10.1"
 dotenv = "0.15.0"
 cryo_freeze = "0.3.2"
+graphviz-rust = "0.9.1"
 petgraph = { version = "0.8.2", features = ["graphmap"] }
 polars = { version = "0.36.2", features = ["polars-io", "lazy"] }
 tokio = { version = "1.47.1", features = ["macros", "rt"] }
@@ -17,10 +19,15 @@ tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 zerocopy = "0.8.26"
 
-# Local Reth dependencies - only what we actually use
+# Local Reth dependencies
+reth-op = { path = "../../temp_repos/reth/crates/optimism/reth", features = [
+    "node",
+] }
+reth-optimism-chainspec = { path = "../../temp_repos/reth/crates/optimism/chainspec", features = [
+    "superchain-configs",
+] }
 reth-db = { path = "../../temp_repos/reth/crates/storage/db" }
 reth-provider = { path = "../../temp_repos/reth/crates/storage/provider" }
-reth-chainspec = { path = "../../temp_repos/reth/crates/chainspec" }
 reth-node-types = { path = "../../temp_repos/reth/crates/node/types" }
 reth-node-ethereum = { path = "../../temp_repos/reth/crates/ethereum/node" }
 
