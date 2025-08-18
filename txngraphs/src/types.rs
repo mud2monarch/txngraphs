@@ -31,7 +31,7 @@ pub type NodeStack = VecDeque<(Address, usize)>;
 ///
 /// The edge is a transfer with certain characteristics.
 ///
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TransferEdge {
     pub amount: U256,
     pub tx_hash: TxHash,

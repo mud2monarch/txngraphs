@@ -10,6 +10,7 @@ use graphviz_rust::{
     exec, parse,
     printer::PrinterContext,
 };
+use petgraph::algo::tarjan_scc;
 use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 use std::{fmt::Display, fmt::Write, fs};
@@ -144,6 +145,7 @@ impl TransferGraphSummary {
     }
 
     // TODO: Nice to have min and max block too
+    // TODO: Should this just be the constructor?
 
     pub fn aggregate_transfers(graph: &TransferGraph) -> Self {
         let mut acc: HashMap<(Address, Address), usize> = HashMap::new();
@@ -205,4 +207,35 @@ impl Display for TransferGraphSummary {
         }
         Ok(())
     }
+}
+
+pub fn find_closed_loops(graph: &TransferGraph) -> Vec<TransferGraph> {
+    let mut closed_loops = Vec::new();
+
+    let mut tarjan_graph = tarjan_scc(&graph);
+    tarjan_graph.retain(|scc| scc.len() > 1);
+
+    for scc in tarjan_graph {
+        let mut index_mapping = HashMap::new();
+        let mut loop_graph = TransferGraph::new();
+
+        for node in &scc {
+            let address = graph[*node];
+            let new_idx = loop_graph.add_node(address);
+            index_mapping.insert(*node, new_idx);
+        }
+
+        for edge in graph.edge_references() {
+            let (source, target) = (edge.source(), edge.target());
+            if scc.contains(&source) && scc.contains(&target) {
+                let new_source_idx = index_mapping[&source];
+                let new_target_idx = index_mapping[&target];
+                loop_graph.add_edge(new_source_idx, new_target_idx, edge.weight().clone());
+            }
+        }
+
+        closed_loops.push(loop_graph);
+    }
+
+    closed_loops
 }

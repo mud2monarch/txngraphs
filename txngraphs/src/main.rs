@@ -4,6 +4,7 @@ mod types;
 use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
+use petgraph::algo::tarjan_scc;
 use std::str::FromStr;
 use tracing::{info, warn};
 use tracing_subscriber;
@@ -73,22 +74,28 @@ fn main() -> Result<()> {
         graph.edge_count()
     );
 
-    // let output = save_graph_as_svg(&graph, "result.svg").expect("Failed to write graph to svg.");
-    // info!("Graph exported to svg file: {}", &output);
-
     let summary =
         TransferGraphSummary::aggregate_transfers(&graph).sort_by_addr_then_transfer_count(true);
     let filtered_summary = summary
         .aggregated_transfers
         .into_iter()
-        .filter(|row| row.no_transfers > 1)
+        .filter(|row| row.no_transfers > 2)
         .collect::<Vec<_>>();
+
     print!(
         "{}",
         TransferGraphSummary {
             aggregated_transfers: filtered_summary
         }
     );
+
+    let closed_loops = find_closed_loops(&graph);
+    for x in closed_loops {
+        let summary2 =
+            TransferGraphSummary::aggregate_transfers(&x).sort_by_addr_then_transfer_count(true);
+
+        print!("Closed loops includes: \n {}", summary2);
+    }
 
     Ok(())
 }
