@@ -10,10 +10,16 @@ use graphviz_rust::{
     exec, parse,
     printer::PrinterContext,
 };
-use petgraph::algo::tarjan_scc;
+use petgraph::Graph;
+use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
+use petgraph::{Directed, algo::tarjan_scc};
+use std::clone::Clone;
 use std::collections::HashMap;
-use std::{fmt::Display, fmt::Write, fs};
+use std::{
+    fmt::{Debug, Display, Write},
+    fs,
+};
 
 // Oops I/Claude didn't realize petgraph had DOT exports already
 
@@ -126,89 +132,7 @@ pub fn save_graph_as_svg(graph: &TransferGraph, filename: &str) -> Result<String
     Ok(output_path)
 }
 
-// TODO: Add support for sum_amount
-pub struct AggregatedTransfer {
-    pub from: Address,
-    pub to: Address,
-    pub no_transfers: usize,
-}
-
-pub struct TransferGraphSummary {
-    pub aggregated_transfers: Vec<AggregatedTransfer>,
-}
-
-impl TransferGraphSummary {
-    pub fn new(aggregated_transfers: Vec<AggregatedTransfer>) -> Self {
-        Self {
-            aggregated_transfers,
-        }
-    }
-
-    // TODO: Nice to have min and max block too
-    // TODO: Should this just be the constructor?
-
-    pub fn aggregate_transfers(graph: &TransferGraph) -> Self {
-        let mut acc: HashMap<(Address, Address), usize> = HashMap::new();
-
-        for edge in graph.edge_references() {
-            let key = (edge.source(), edge.target());
-            *acc.entry((graph[key.0], graph[key.1])).or_insert(0) += 1;
-        }
-
-        let mut aggregated_transfers = Vec::new();
-
-        for ((from, to), count) in acc {
-            aggregated_transfers.push(AggregatedTransfer {
-                from: from,
-                to: to,
-                no_transfers: count,
-            });
-        }
-
-        TransferGraphSummary {
-            aggregated_transfers: aggregated_transfers,
-        }
-    }
-
-    pub fn sort_by_transfer_count(mut self, descending: bool) -> Self {
-        self.aggregated_transfers.sort_by(|a, b| {
-            if descending {
-                b.no_transfers.cmp(&a.no_transfers)
-            } else {
-                a.no_transfers.cmp(&b.no_transfers)
-            }
-        });
-        self
-    }
-
-    pub fn sort_by_addr_then_transfer_count(mut self, descending: bool) -> Self {
-        self.aggregated_transfers.sort_by(|a, b| {
-            a.from.cmp(&b.from).then_with(|| {
-                if descending {
-                    b.no_transfers.cmp(&a.no_transfers)
-                } else {
-                    a.no_transfers.cmp(&b.no_transfers)
-                }
-            })
-        });
-
-        self
-    }
-}
-
-impl Display for TransferGraphSummary {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for transfer in &self.aggregated_transfers {
-            write!(
-                f,
-                "{:.36} -> {:.36} transferred {} times.\n",
-                transfer.from, transfer.to, transfer.no_transfers
-            )?
-        }
-        Ok(())
-    }
-}
-
+// TODO: move this to impl TransferGraph
 pub fn find_closed_loops(graph: &TransferGraph) -> Vec<TransferGraph> {
     let mut closed_loops = Vec::new();
 
@@ -238,4 +162,163 @@ pub fn find_closed_loops(graph: &TransferGraph) -> Vec<TransferGraph> {
     }
 
     closed_loops
+}
+
+// TODO: feat. add support for sum_amount
+#[derive(Debug)]
+pub struct SummaryEdge {
+    pub no_transfers: usize,
+}
+
+impl SummaryEdge {
+    pub fn new(no_transfers: usize) -> Self {
+        Self {
+            no_transfers: no_transfers,
+        }
+    }
+}
+
+impl Display for SummaryEdge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.no_transfers)
+    }
+}
+
+// TODO: Add support for sum_amount
+#[derive(Debug, Clone)]
+pub struct AggregatedTransfer {
+    pub from: Address,
+    pub to: Address,
+    pub no_transfers: usize,
+}
+
+impl Display for AggregatedTransfer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:.36} -> {:.36} transferred {} times.\n",
+            self.from, self.to, self.no_transfers
+        );
+        Ok(())
+    }
+}
+
+/// TransferSummary
+///
+/// A TransferSummary is primarily a graph that aggregates many TransferEdges between nodes.
+///
+/// It optionally has a tabular representation, a Vec<AggregatedTransfer>, but given this is
+/// a graph library it's not required to be created or used.
+pub struct TransferSummary {
+    pub summary_graph: petgraph::Graph<Address, SummaryEdge, Directed>,
+    pub summary_table: Option<Vec<AggregatedTransfer>>,
+}
+
+// TODO: Add filtering for >1 transfers
+impl TransferSummary {
+    pub fn new() -> Self {
+        let graph = Graph::<Address, SummaryEdge, Directed>::new();
+        Self {
+            summary_graph: graph,
+            summary_table: None,
+        }
+    }
+
+    pub fn from_transfer_graph(graph: &TransferGraph) -> Self {
+        // Accumulate/count all transfers from the transfer graph
+        let mut acc: HashMap<(Address, Address), usize> = HashMap::new();
+
+        for edge in graph.edge_references() {
+            let key = (edge.source(), edge.target());
+            *acc.entry((graph[key.0], graph[key.1])).or_insert(0) += 1;
+        }
+
+        // Add the nodes and edges to the summary graph
+        let mut summary_graph = Graph::<Address, SummaryEdge, Directed>::new();
+        let mut node_map = HashMap::<Address, NodeIndex>::new();
+
+        for ((from, to), count) in acc {
+            let from_index = *node_map
+                .entry(from)
+                .or_insert_with(|| summary_graph.add_node(from));
+            let to_index = *node_map
+                .entry(to)
+                .or_insert_with(|| summary_graph.add_node(to));
+
+            summary_graph.add_edge(
+                from_index,
+                to_index,
+                SummaryEdge {
+                    no_transfers: count,
+                },
+            );
+        }
+
+        TransferSummary {
+            summary_graph: summary_graph,
+            summary_table: None,
+        }
+    }
+
+    pub fn with_summary_table(self) -> Self {
+        let mut aggregated_transfers = Vec::new();
+
+        self.summary_graph
+            .edge_references()
+            .into_iter()
+            .for_each(|edge| {
+                let from = self.summary_graph[edge.source()];
+                let to = self.summary_graph[edge.target()];
+                let no_transfers = edge.weight().no_transfers;
+                aggregated_transfers.push(AggregatedTransfer {
+                    from,
+                    to,
+                    no_transfers,
+                });
+            });
+
+        Self {
+            summary_graph: self.summary_graph,
+            summary_table: Some(aggregated_transfers),
+        }
+    }
+
+    pub fn has_summary_table(&self) -> bool {
+        self.summary_table.is_some()
+    }
+}
+
+impl Display for TransferSummary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(table) = &self.summary_table {
+            let mut sorted_table = table.clone();
+
+            sorted_table.sort_by(|a, b| {
+                a.from
+                    .cmp(&b.from)
+                    .then_with(|| b.no_transfers.cmp(&a.no_transfers))
+            });
+
+            for transfer in sorted_table {
+                writeln!(
+                    f,
+                    "{:.36} -> {:.36} for {} transfers",
+                    transfer.from, transfer.to, transfer.no_transfers
+                )?;
+            }
+        } else {
+            writeln!(f, "Transfer Summary:")?;
+            for edge in self.summary_graph.edge_references() {
+                let from = self.summary_graph[edge.source()];
+                let to = self.summary_graph[edge.target()];
+                let no_transfers = edge.weight().no_transfers;
+                writeln!(
+                    f,
+                    "{:.36} -> {:.36} for {} transfers",
+                    from, to, no_transfers
+                )?;
+            }
+        }
+        Ok(())
+    }
 }

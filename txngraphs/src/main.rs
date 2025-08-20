@@ -74,28 +74,18 @@ fn main() -> Result<()> {
         graph.edge_count()
     );
 
-    let summary =
-        TransferGraphSummary::aggregate_transfers(&graph).sort_by_addr_then_transfer_count(true);
-    let filtered_summary = summary
-        .aggregated_transfers
-        .into_iter()
-        .filter(|row| row.no_transfers > 2)
-        .collect::<Vec<_>>();
+    let summary: TransferSummary =
+        TransferSummary::from_transfer_graph(&graph).with_summary_table();
 
-    print!(
-        "{}",
-        TransferGraphSummary {
-            aggregated_transfers: filtered_summary
-        }
-    );
+    print!("{}", summary);
 
-    let closed_loops = find_closed_loops(&graph);
-    for x in closed_loops {
-        let summary2 =
-            TransferGraphSummary::aggregate_transfers(&x).sort_by_addr_then_transfer_count(true);
+    // let closed_loops = find_closed_loops(&graph);
+    // for x in closed_loops {
+    //     let summary2 =
+    //         TransferGraphSummary::aggregate_transfers(&x).sort_by_addr_then_transfer_count(true);
 
-        print!("Closed loops includes: \n {}", summary2);
-    }
+    //     print!("Closed loops includes: \n {}", summary2);
+    // }
 
     Ok(())
 }
