@@ -1,7 +1,33 @@
 # Graph-based transaction tool with reth-DB
 
+This is a tool to find, visualize, and measure token transfers in a graph-based format. It takes advantage of the reth database to unlock blazingly fast exploration that has never been possible with open source software before.
+
+There are no effective, open-source tools for transfer-based investigations today:
+- Traditional tabular data like you could find on Dune is ineffective because visualization and measurement tools are not designed for this purpose; a bar chart does not show you if funds are moving between the same ten addresses.
+- Commercial services such as TRM Labs, Chainalysis, and Arkham Intelligence provide graph-based tools and visualizations, but they're paid, and appear hard to use programmatically.
+- Lastly, searches to assemble transfer graphs from common data sources like Dune, Allium, or RPCs are I/O-limited, and impractically slow and expensive.
+
+This tool is built around reth DB, to solve the I/O problem, and includes visualization and measurement utilities to facilitate explorations.
+
+# Current Status
+*last ed. 8/30/25*
+I aim to release a v0.1 of this tool. See feature list below. Currently estimating this will take ~100 hours at my level of expertise.
+
+# Feat. list (WIP)
+- Reorganize into clear modules
+- Parallelize reads
+- Look into SVG rendering perf
+- Good docs
+- Python API
+- ~Write the breadth-first search generic over a data source~
+- ~Start with CSV then do RPC then do reth DB~
+- Add support for >1 root address (maybe)
+- ~Need to add filtering for token. Should be easy with good types.~
+- Get Cryo connector working
+
 [Link to slides -- explanation of problem, screenshot demo](https://docs.google.com/presentation/d/1j2BoZv-iszDs88wIsYS2kxomsdlOZNqOSjNmQhSGiKk/edit?usp=sharing)
 
+# OLD NOTES BELOW
 | **Description.** What is it? | A tool to visualize and measure concentration of ERC-20 token transfers amongst a group of addresses |
 | --- | --- |
 | **Problem.** What problem is this solving? | Given a set of root addresses, build a visual graph of all token transfers to *n* depth and calculate cumulative transfer volumes/other metrics. |
@@ -13,16 +39,42 @@
 ### Outputs
 - Visual graph
 - Some measures of no. of txns, volume, and centrality
-
-### Zach notes/Todo
-- ~Write the breadth-first search generic over a data source~
-- ~Start with CSV then do RPC then do reth DB~
-- Add support for >1 root address (maybe)
-- ~Need to add filtering for token. Should be easy with good types.~
 - Try to get <1s for 100k blocks? - [CGPT convo](https://chatgpt.com/share/e/6872c2bc-5358-8013-8a99-291ad6cfa795)
+  - Chunk and parallelize reads
 
 ### Docs/Reference
 - https://github.com/paradigmxyz/reth/blob/3277333df6ba9bd798f059e7a2d43d712e028d5c/crates/storage/db-api/src/lib.rs
 - https://github.com/yash-atreya/reth-walk-storage/blob/main/src/main.rs
   - 5m slots in 0.5s
 - all tables in reth db: https://github.com/paradigmxyz/reth/blob/3277333df6ba9bd798f059e7a2d43d712e028d5c/crates/storage/db-api/src/tables/mod.rs
+
+### TODO algo
+3. Degree distribution (“strandedness” measure)
+pub struct DegreeStats {
+    pub address: Address,
+    pub in_degree: usize,
+    pub out_degree: usize,
+    pub total_degree: usize,
+}
+
+pub struct DegreeDistribution {
+    pub min_transfers: usize,
+    pub percent_of_nodes: f64,
+}
+
+pub fn compute_degree_stats(graph: &TransferGraph) -> Vec<DegreeStats>;
+
+pub fn degree_distribution(stats: &[DegreeStats]) -> Vec<DegreeDistribution>;
+
+
+compute_degree_stats → per-node stats.
+
+degree_distribution → distribution table like “% of nodes with ≥ N transfers.”
+
+That set covers:
+
+Table 1 via aggregate_transfers.
+
+Table 2 (cycles) via extract_cyclic_subgraph.
+
+Table 3 (strandedness) via compute_degree_stats + degree_distribution.
