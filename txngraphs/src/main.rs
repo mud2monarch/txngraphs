@@ -4,11 +4,10 @@ mod types;
 use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
-use petgraph::algo::tarjan_scc;
 use std::str::FromStr;
 use tracing::{info, warn};
 use tracing_subscriber;
-use txngraphs::{data_sources::*, graph_utils::*, reth_source::*, traversal::*, types::*};
+use txngraphs::{data_sources::*, graph_utils::*, reth_source::*, summary::*, traversal::*};
 
 #[derive(Parser, Debug)]
 struct Args {
