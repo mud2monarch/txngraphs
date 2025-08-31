@@ -2,6 +2,8 @@
 
 This is a tool to find, visualize, and measure token transfers in a graph-based format. It takes advantage of the reth database to unlock blazingly fast exploration that has never been possible with open source software before.
 
+[Link to slides from Paradigm Frontiers -- explanation of problem, screenshot demo](https://docs.google.com/presentation/d/1j2BoZv-iszDs88wIsYS2kxomsdlOZNqOSjNmQhSGiKk/edit?usp=sharing)
+
 There are no effective, open-source tools for transfer-based investigations today:
 - Traditional tabular data like you could find on Dune is ineffective because visualization and measurement tools are not designed for this purpose; a bar chart does not show you if funds are moving between the same ten addresses.
 - Commercial services such as TRM Labs, Chainalysis, and Arkham Intelligence provide graph-based tools and visualizations, but they're paid, and appear hard to use programmatically.
@@ -10,13 +12,27 @@ There are no effective, open-source tools for transfer-based investigations toda
 This tool is built around reth DB, to solve the I/O problem, and includes visualization and measurement utilities to facilitate explorations.
 
 # Current Status
-*last ed. 8/30/25*
-I aim to release a v0.1 of this tool. See feature list below. Currently estimating this will take ~100 hours at my level of expertise.
+*last ed. 8/31/25*
+
+I aim to release a v0.1 of this tool. See feature list below. This could take up to 3 weeks of full time work.
+
+**Key Insights:**
+- **CPU-bound workload**: 91-98% of time spent in parsing/filtering logic, not database I/O
+- **Reth database is incredibly fast**: Only 1-6% of time spent in system calls
+- **Linear scaling**: Performance scales predictably with block count
+- **Parallelization potential**: High CPU utilization suggests near-linear speedup possible with multiple cores
 
 # Feat. list (WIP)
-- Reorganize into clear modules
+- ~Reorganize into clear modules~
 - Parallelize reads
+  - Write benchmark script/infra, measure
+  - Parallelize get_transfers() reads
+  - Parallelize BFS reads per-tier (need a mutex, so more complicated)
+- TODO: look into: Why am I passing tokens as an `&[Address]`?
+- TODO: I'm propagating errors but basically not handling them at all. I think things just crash if there's an issue... need to fix that. Also, is using Anyhow a good idea? I kind of don't think so, it feels 'cheap'. Perhaps I should define my own error types at this point.
 - Look into SVG rendering perf
+- Expand reth source support to at least Superchain and ETH L1
+- Get Cryo and CSV connectors working or discard them
 - Good docs
 - Python API
 - ~Write the breadth-first search generic over a data source~
@@ -25,7 +41,15 @@ I aim to release a v0.1 of this tool. See feature list below. Currently estimati
 - ~Need to add filtering for token. Should be easy with good types.~
 - Get Cryo connector working
 
-[Link to slides -- explanation of problem, screenshot demo](https://docs.google.com/presentation/d/1j2BoZv-iszDs88wIsYS2kxomsdlOZNqOSjNmQhSGiKk/edit?usp=sharing)
+## Performance Benchmarks (Baseline - Sequential)
+
+First performance benchmark (no parallelization, commit eb31916):
+
+| Workload | Blocks | Real Time | User (CPU) | Sys (I/O) | CPU % | I/O % |
+|----------|--------|-----------|------------|-----------|-------|-------|
+| Small    | 5K     | 0.32s     | 0.29s      | 0.02s     | 91%   | 6%    |
+| Medium   | 20K    | 1.45s     | 1.42s      | 0.03s     | 98%   | 2%    |
+| Large    | 100K   | 20.0s     | 18.8s      | 0.16s     | ---   | ---   |
 
 # OLD NOTES BELOW
 | **Description.** What is it? | A tool to visualize and measure concentration of ERC-20 token transfers amongst a group of addresses |

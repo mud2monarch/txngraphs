@@ -1,10 +1,12 @@
 use alloy_consensus::TxReceipt;
 use alloy_primitives::{Address, B256, U256, aliases::BlockNumber, b256};
 use anyhow::{Context, Result};
+use reth_op::primitives::serde_bincode_compat::Block;
 use std::{path::Path, sync::Arc};
 use tracing::info;
 // Database components
 use crate::{data_sources::TransferDataSource, types::Transfer};
+use rayon::prelude::*;
 use reth_db::{DatabaseEnv, mdbx::DatabaseArguments, open_db_read_only};
 use reth_node_types::NodeTypesWithDBAdapter;
 use reth_op::node::OpNode;
@@ -35,24 +37,21 @@ impl RethTransferDataSource {
 
         Self { factory }
     }
-}
 
-impl TransferDataSource for RethTransferDataSource {
-    fn get_transfers(
-        &self,
-        address: &Address,
-        token_addresses: &[Address],
-        block_start: &BlockNumber,
-        block_end: &BlockNumber,
+    fn process_chunk(
+        factory: ProviderFactory<NodeTypesWithDBAdapter<OpNode, Arc<DatabaseEnv>>>,
+        address: Address,
+        token_addresses: Vec<Address>,
+        start_block: BlockNumber,
+        end_block: BlockNumber,
     ) -> Result<Vec<Transfer>> {
         let mut transfers: Vec<Transfer> = Vec::new();
         // I want to collect all txn data without the hash for efficiency so I need
         // this intermediate vector
         let mut txns_no_hash = Vec::new();
+        let provider = factory.provider()?;
 
-        let provider = self.factory.provider()?;
-
-        for bn in *block_start..=*block_end {
+        for bn in start_block..=end_block {
             let txns_in_block = provider
                 .block_body_indices(bn)
                 .context("failed to get block body indices")?
@@ -73,7 +72,7 @@ impl TransferDataSource for RethTransferDataSource {
                     if token_addresses.contains(&log.address)
                         && log.topics().len() == 3
                         && log.topics()[0] == ERC20_TRANSFER_EVENT_SIGNATURE
-                        && Address::from_word(log.topics()[1]) == *address
+                        && Address::from_word(log.topics()[1]) == address
                     {
                         let from = Address::from_word(log.topics()[1]);
                         let to = Address::from_word(log.topics()[2]);
@@ -88,7 +87,6 @@ impl TransferDataSource for RethTransferDataSource {
                 }
             }
         }
-
         // for matched txns, get the tx hash
         for txn in txns_no_hash {
             let tx_data = provider
@@ -111,5 +109,38 @@ impl TransferDataSource for RethTransferDataSource {
             );
         }
         Ok(transfers)
+    }
+}
+
+impl TransferDataSource for RethTransferDataSource {
+    fn get_transfers(
+        &self,
+        address: &Address,
+        token_addresses: &[Address],
+        block_start: &BlockNumber,
+        block_end: &BlockNumber,
+    ) -> Result<Vec<Transfer>> {
+        let chunk_size: u64 = 5000;
+        let chunks: Vec<(BlockNumber, BlockNumber)> = (*block_start..=*block_end)
+            .step_by(chunk_size as usize)
+            .map(|start| (start, std::cmp::min(start + chunk_size, *block_end)))
+            .collect();
+
+        let all_transfers: Result<Vec<Vec<Transfer>>> = chunks
+            .into_par_iter()
+            .map(|(start_block, end_block)| {
+                Self::process_chunk(
+                    self.factory.clone(),
+                    *address,
+                    token_addresses.to_vec(),
+                    start_block,
+                    end_block,
+                )
+            })
+            .collect();
+
+        let flattened: Vec<Transfer> = all_transfers?.into_iter().flatten().collect();
+
+        Ok(flattened)
     }
 }
