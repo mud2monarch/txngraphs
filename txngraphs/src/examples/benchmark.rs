@@ -8,23 +8,15 @@ use txngraphs::{data_sources::*, graph_utils::*, reth_source::*, summary::*, tra
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(
-        short,
-        long,
-        default_value = "0x284F11109359a7e1306C3e447ef14D38400063FF"
-    )]
+    #[arg(short, long)]
     root_address: String,
-    #[arg(
-        long,
-        default_value = "0x4200000000000000000000000000000000000006",
-        value_delimiter = ','
-    )]
+    #[arg(long, value_delimiter = ',')]
     token_address: Vec<String>,
-    #[arg(short = 'd', long, default_value = "1")]
+    #[arg(short = 'd', long)]
     max_depth: usize,
-    #[arg(short = 's', long, default_value = "8610738")]
+    #[arg(short = 's', long)]
     block_start: u64,
-    #[arg(short = 'e', long, default_value = "8630738")]
+    #[arg(short = 'e', long)]
     block_end: u64,
 }
 
@@ -70,18 +62,12 @@ fn main() -> Result<()> {
         graph.edge_count()
     );
 
+    info!("{:?}", graph);
+
     let summary: TransferSummary =
         TransferSummary::from_transfer_graph(&graph).with_summary_table();
 
-    print!("{}", summary);
-
-    // let closed_loops = find_closed_loops(&graph);
-    // for x in closed_loops {
-    //     let summary2 =
-    //         TransferGraphSummary::aggregate_transfers(&x).sort_by_addr_then_transfer_count(true);
-
-    //     print!("Closed loops includes: \n {}", summary2);
-    // }
+    info!("{}", summary);
 
     Ok(())
 }

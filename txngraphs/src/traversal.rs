@@ -2,7 +2,7 @@ use crate::{data_sources::*, types::*};
 use alloy_primitives::{Address, BlockNumber};
 use anyhow::Result;
 use petgraph::graph::NodeIndex;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 pub fn build_transfer_graph<D: TransferDataSource>(
     data_source: &D,
@@ -14,7 +14,7 @@ pub fn build_transfer_graph<D: TransferDataSource>(
 ) -> Result<TransferGraph> {
     let mut graph = TransferGraph::new();
     // stack keeps track of addresses + depth of my BFS
-    let mut stack = NodeStack::new();
+    let mut stack: VecDeque<(Address, usize)> = VecDeque::new();
     // addr_idx_map maps addresses to their node index in the graph so that I can insert edges
     let mut addr_idx_map: HashMap<Address, NodeIndex> = HashMap::new();
     // visited keeps track of addresses that have been visited
@@ -36,7 +36,7 @@ pub fn build_transfer_graph<D: TransferDataSource>(
             let from = transfer.from_address.clone();
             let to = transfer.to_address.clone();
 
-            // Check our addr_idx_map to see if we've already seen this address
+            // This code checks our addr_idx_map to see if we've already seen this address
             // If we have seen this address (i.e., .entry() returns an Entry::Occupied), `.entry().or_insert_with()` will return the existing node index
             // If we haven't seen this address (i.e., .entry() returns an Entry::Vacant), `.or_insert_with()` will
             // (1) add the address as a node in the graph (which returns a NodeIndex),

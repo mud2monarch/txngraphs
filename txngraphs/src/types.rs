@@ -1,30 +1,17 @@
 use alloy_primitives::{
-    Address, B256,
+    Address,
     aliases::{BlockNumber, TxHash, U256},
 };
-use anyhow::{Context, Result};
-use petgraph::{
-    Directed,
-    graph::{Graph, NodeIndex},
-};
-use std::{collections::VecDeque, fmt::Debug, fmt::Display};
-use tracing::info;
+use petgraph::{Directed, graph::Graph};
+use std::{fmt::Debug, fmt::Display};
 
 ///
 /// TransferGraph
 ///
-/// The graph is a directed graph where the nodes are addresses, as an &str, and the edges are transfers with certain characteristics.
+/// The graph is a directed graph where the nodes are addresses, as an &str,
+/// and the edges are transfers with certain characteristics.
 /// For edges, see `TransferEdge`.
 pub type TransferGraph = Graph<Address, TransferEdge, Directed>;
-
-///
-/// NodeStack
-///
-/// A stack of nodes to visit.
-///
-/// The first element is the address, and the second element is the depth.
-///
-pub type NodeStack = VecDeque<(Address, usize)>;
 
 ///
 /// TransferEdge
@@ -53,7 +40,7 @@ impl Display for TransferEdge {
 ///
 /// A transfer is a single token transfer between two addresses.
 ///
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Transfer {
     pub tx_hash: TxHash,
     pub block_number: BlockNumber,

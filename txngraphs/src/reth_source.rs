@@ -4,17 +4,15 @@ use anyhow::{Context, Result};
 use std::{path::Path, sync::Arc};
 use tracing::info;
 // Database components
+use crate::{data_sources::TransferDataSource, types::Transfer};
 use reth_db::{DatabaseEnv, mdbx::DatabaseArguments, open_db_read_only};
+use reth_node_types::NodeTypesWithDBAdapter;
 use reth_op::node::OpNode;
 use reth_optimism_chainspec::UNICHAIN_MAINNET;
 use reth_provider::providers::StaticFileProvider;
 use reth_provider::{
     BlockBodyIndicesProvider, ProviderFactory, ReceiptProvider, TransactionsProvider,
 };
-
-// Node types
-use crate::{data_sources::TransferDataSource, types::Transfer};
-use reth_node_types::NodeTypesWithDBAdapter;
 
 const ERC20_TRANSFER_EVENT_SIGNATURE: B256 =
     b256!("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef");
