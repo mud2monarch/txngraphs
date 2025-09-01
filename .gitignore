@@ -3,3 +3,9 @@ txngraphs/target/
 ref.rs
 .env
 claude.md
+*.txt
+results/
+flamegraph.svg
+.cargo/
+txngraphs/bench/*result*
+txngraphs/bench/bench-records.md

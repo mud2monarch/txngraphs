@@ -44,6 +44,10 @@ impl RethTransferDataSource {
         start_block: BlockNumber,
         end_block: BlockNumber,
     ) -> Result<Vec<Transfer>> {
+        info!(
+            "starting block range {}, end block {}",
+            start_block, end_block
+        );
         let mut transfers: Vec<Transfer> = Vec::new();
         // I want to collect all txn data without the hash for efficiency so I need
         // this intermediate vector
@@ -55,10 +59,6 @@ impl RethTransferDataSource {
                 .block_body_indices(bn)
                 .context("failed to get block body indices")?
                 .context(format!("No block body indices found for block {}", bn))?;
-
-            if bn % 1000 == 0 {
-                info!("Processing block {}", bn);
-            }
 
             for tx_num in txns_in_block.tx_num_range() {
                 let tx_receipt = provider
@@ -119,7 +119,7 @@ impl TransferDataSource for RethTransferDataSource {
         block_start: &BlockNumber,
         block_end: &BlockNumber,
     ) -> Result<Vec<Transfer>> {
-        let chunk_size: u64 = 5000;
+        let chunk_size: u64 = 20000;
         let chunks: Vec<(BlockNumber, BlockNumber)> = (*block_start..=*block_end)
             .step_by(chunk_size as usize)
             .map(|start| (start, std::cmp::min(start + chunk_size, *block_end)))

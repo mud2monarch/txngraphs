@@ -1,6 +1,7 @@
 use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
+use rayon::prelude::*;
 use std::str::FromStr;
 use tracing::{info, warn};
 use tracing_subscriber;
@@ -22,7 +23,7 @@ struct Args {
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
-
+    println!("rayon threads = {}", rayon::current_num_threads());
     info!("Starting txngraphs");
     let args = Args::parse();
     let root_address: Address = Address::from_str(&args.root_address)?;
