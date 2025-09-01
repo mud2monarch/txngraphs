@@ -1,7 +1,6 @@
 use alloy_consensus::TxReceipt;
 use alloy_primitives::{Address, B256, U256, aliases::BlockNumber, b256};
 use anyhow::{Context, Result};
-use reth_op::primitives::serde_bincode_compat::Block;
 use std::{path::Path, sync::Arc};
 use tracing::info;
 // Database components

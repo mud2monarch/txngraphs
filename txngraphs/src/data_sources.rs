@@ -3,16 +3,15 @@
 use crate::types::*;
 use alloy_primitives::{
     Address, B256,
-    aliases::{BlockNumber, TxHash, U256},
+    aliases::{BlockNumber, U256},
 };
 use anyhow::{Context, Result};
 use cryo_freeze::*;
 use polars::prelude::*;
 use std::str::FromStr;
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::HashMap,
     fmt::{Debug, Display},
-    hash::Hash,
     sync::Arc,
 };
 use tokio::runtime::Runtime;

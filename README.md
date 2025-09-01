@@ -25,12 +25,12 @@ I aim to release a v0.1 of this tool. See feature list below. This could take up
 # Feat. list (WIP)
 - ~Reorganize into clear modules~
 - Parallelize reads
-  - Write benchmark script/infra, measure
-  - Parallelize get_transfers() reads
+  - ~Write benchmark script/infra, measure~
+  - ~Parallelize get_transfers() reads~
   - Parallelize BFS reads per-tier (need a mutex, so more complicated)
-- TODO: look into: Why am I passing tokens as an `&[Address]`?
-- TODO: I'm propagating errors but basically not handling them at all. I think things just crash if there's an issue... need to fix that. Also, is using Anyhow a good idea? I kind of don't think so, it feels 'cheap'. Perhaps I should define my own error types at this point.
+- ~TODO: look into: Why am I passing tokens as an `&[Address]`?~
 - Look into SVG rendering perf
+- TODO: I'm propagating errors but basically not handling them at all. I think things just crash if there's an issue... need to fix that. Also, is using Anyhow a good idea? I kind of don't think so, it feels 'cheap'. Perhaps I should define my own error types at this point.
 - Expand reth source support to at least Superchain and ETH L1
 - Get Cryo and CSV connectors working or discard them
 - Good docs
@@ -41,15 +41,31 @@ I aim to release a v0.1 of this tool. See feature list below. This could take up
 - ~Need to add filtering for token. Should be easy with good types.~
 - Get Cryo connector working
 
-## Performance Benchmarks (Baseline - Sequential)
+## Performance Benchmarks
 
-First performance benchmark (no parallelization, commit eb31916):
+### Baseline - Sequential (commit eb31916)
 
 | Workload | Blocks | Real Time | User (CPU) | Sys (I/O) | CPU % | I/O % |
 |----------|--------|-----------|------------|-----------|-------|-------|
 | Small    | 5K     | 0.32s     | 0.29s      | 0.02s     | 91%   | 6%    |
 | Medium   | 20K    | 1.45s     | 1.42s      | 0.03s     | 98%   | 2%    |
 | Large    | 100K   | 20.0s     | 18.8s      | 0.16s     | ---   | ---   |
+
+### Rayon Parallelization (commit 4d12ed1)
+
+Parallelized `get_transfers()` with 5K block chunks using `Rayon::into_par_iter()`:
+
+| Workload | Blocks | Real Time | User (CPU) | Sys (I/O) | Real Speedup | CPU Overhead |
+|----------|--------|-----------|------------|-----------|--------------|--------------|
+| Small    | 5K     | 0.33s     | 0.30s      | 0.03s     | 1.0x         | 1.0x         |
+| Medium   | 20K    | 1.06s     | 3.25s      | 0.04s     | **1.37x**    | 2.3x         |
+| Large    | 100K   | 14.66s    | 95.51s     | 0.46s     | **1.36x**    | 5.1x         |
+
+**Key Observations:**
+- **25-36% real-time speedup** for medium/large workloads
+- **2-5x increase in total CPU time** due to parallel overhead
+- **Minimal I/O impact** - sys time remains under 3% of total
+- **Thread contention likely** - speedup plateaus despite high CPU usage
 
 # OLD NOTES BELOW
 | **Description.** What is it? | A tool to visualize and measure concentration of ERC-20 token transfers amongst a group of addresses |
