@@ -1,8 +1,8 @@
 # Graph-based transaction tool with reth-DB
 
-This is a tool to find, visualize, and measure token transfers in a graph-based format. It takes advantage of the reth database to unlock blazingly fast exploration that has never been possible with open source software before.
+This is a tool to find, visualize, and measure token transfers in a graph-based format. It takes advantage of the reth database to unlock blazingly fast exploration that has never been possible with open source software before. [Link to slides from Paradigm Frontiers' hackathon](https://docs.google.com/presentation/d/1j2BoZv-iszDs88wIsYS2kxomsdlOZNqOSjNmQhSGiKk/edit?usp=sharing), which explain the problem, the basic structure, and a POC.
 
-[Link to slides from Paradigm Frontiers -- explanation of problem, screenshot demo](https://docs.google.com/presentation/d/1j2BoZv-iszDs88wIsYS2kxomsdlOZNqOSjNmQhSGiKk/edit?usp=sharing)
+![Graphic showing the transformation of a table of ERC-20 transfers into a directed graph.](https://zachrwong.info/wp-content/uploads/2025/09/Screenshot-2025-09-01-at-7.56.59-PM.png "For token transfers, graphs can be easier to reason about, but finding and formatting about the transfers is challenging today.")
 
 There are no effective, open-source tools for transfer-based investigations today:
 - Traditional tabular data like you could find on Dune is ineffective because visualization and measurement tools are not designed for this purpose; a bar chart does not show you if funds are moving between the same ten addresses.
