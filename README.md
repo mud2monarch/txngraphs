@@ -16,12 +16,6 @@ This tool is built around reth DB, to solve the I/O problem, and includes visual
 
 I aim to release a v0.1 of this tool. See feature list below. This could take up to 3 weeks of full time work.
 
-**Key Insights:**
-- **CPU-bound workload**: 91-98% of time spent in parsing/filtering logic, not database I/O
-- **Reth database is incredibly fast**: Only 1-6% of time spent in system calls
-- **Linear scaling**: Performance scales predictably with block count
-- **Parallelization potential**: High CPU utilization suggests near-linear speedup possible with multiple cores
-
 # Feat. list (WIP)
 - ~Reorganize into clear modules~
 - Parallelize reads
