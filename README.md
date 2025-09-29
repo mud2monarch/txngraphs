@@ -37,6 +37,8 @@ I aim to release a v0.1 of this tool. See feature list below. This could take up
 
 ## Performance Benchmarks
 
+Note to reader: I blogged about my work implementing Rayon parallelization on [my personal website](https://zachrwong.info/my-first-foray-into-benchmarking/).
+
 ### Baseline - Sequential (commit eb31916)
 
 | Workload | Blocks | Real Time | User (CPU) | Sys (I/O) | CPU % | I/O % |
